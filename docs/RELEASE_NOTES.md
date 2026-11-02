@@ -1,4 +1,17 @@
-# ORBIT 0.4.3 public.1
+# ORBIT 0.4.3 public.2
+
+从 GitHub 全新 clone 后复核并修正：
+
+- 厂商通道锁改用当前 Node 可执行文件；只有 python3 的 Linux 不再误报“通道占用”。
+- 区分锁竞争和辅助进程失败，部署前置条件与 doctor 加入 flock。
+- 发布检查读取暂存区的文件类型，补充 .env、登录 JSON、音频、数据库和小写设备地址检查。
+- 新增两项锁回归测试及八项发布拒绝反例，加入 CI；176 项 Node 测试在 Termux 和 Linux 通过。
+
+详见 [复核记录](REVIEW.md)。手环 RPK、五款表盘、原生模块及 Android JAR 与 public.1 相同；
+下载包应与本版源码配合使用，不需要因为这次手机源码修复重新安装手环。
+public.1 的已有 tag 和附件保留原样。
+
+## ORBIT 0.4.3 public.1
 
 腕上 Codex 的首个公开源码版本，MIT 许可。
 

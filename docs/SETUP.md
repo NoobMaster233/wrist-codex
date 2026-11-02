@@ -9,7 +9,7 @@
 | ADB | 已授权的本机调试连接，默认 127.0.0.1:5555 |
 | 厂商认证密钥 | 该手环自己的 16 字节认证材料，由所有者提供私有导出 |
 | Codex | 在手机可正常运行、已登录，提供 App Server Unix socket |
-| 工具 | Node.js 22+、Python 3、OpenSSL、Lua 5.4、C 编译器 |
+| 工具 | Node.js 22+、Python 3、OpenSSL、Lua 5.4、C 编译器、util-linux 的 flock |
 | 构建字节管道 | JDK 17+；脚本按哈希下载 Android API / D8 |
 | 音频解码 | libopus |
 | 表盘构建 | Lua 5.4、rsvg-convert、ImageMagick 的 magick 命令 |
@@ -32,11 +32,13 @@ cd wrist-codex
 npm ci
 npm test
 python scripts/test-native.py
+python scripts/test-publication.py
 python scripts/check-publication.py
 ~~~
 
 在 Termux 中安装对应工具；包名会随仓库变化，先核对本机包列表。
-常用包为 python、nodejs、git、android-tools、openssl、libopus、lua54、clang、openjdk-17。
+常用包为 python、nodejs、git、android-tools、openssl、libopus、lua54、clang、openjdk-17、util-linux。
+Termux 的 Python 命令为 python；只提供 python3 的 Linux 离线环境应将文档命令中的 python 换为 python3。
 不需要在手机编译原生模块时，可使用 resources/native 中的固定产物。
 
 ### 可选：使用发布附件

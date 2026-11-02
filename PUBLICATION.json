@@ -1,5 +1,5 @@
 {
-  "edition": "0.4.3-public.1",
+  "edition": "0.4.3-public.2",
   "preparedAt": "2026-11-03",
   "license": "MIT",
   "repository": "https://github.com/NoobMaster233/wrist-codex",
@@ -11,7 +11,7 @@
     "appVersionCode": 37
   },
   "offlineChecks": {
-    "nodeTestsPassed": 174,
+    "nodeTestsPassed": 176,
     "nativeCTestGroupsPassed": 4,
     "reconnectPolicyTestsPassed": 3,
     "recoveryLuaScenariosPassed": 14,
@@ -20,7 +20,8 @@
     "publicSetupIdentityAndBundleTestPassed": true,
     "pythonSyntaxPassed": true,
     "rpkBuildPassed": true,
-    "androidBytePipesBuildPassed": true
+    "androidBytePipesBuildPassed": true,
+    "publicationGateRejectionCasesPassed": 8
   },
   "independentChecks": {
     "gitleaksVersion": "8.30.1",
@@ -53,5 +54,15 @@
     "Firmware-bound native code is only for the stated baseline.",
     "ChatGPT session transcription is experimental.",
     "Long-term background survival and automatic recovery remain incomplete."
-  ]
+  ],
+  "doubleCheck": {
+    "date": "2026-11-03",
+    "cleanGitHubCloneVerified": true,
+    "termuxAndLinuxNodeTestsPassed": 176,
+    "lockHelperRequiresPythonAlias": false,
+    "stagedContentAndObjectTypeChecked": true,
+    "document": "docs/REVIEW.md",
+    "binaryAssetsChanged": false,
+    "originalReleaseDownloadVerified": true
+  }
 }

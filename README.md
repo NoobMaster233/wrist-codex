@@ -52,6 +52,7 @@ flowchart LR
 | 日常命令、重启恢复 | [运行维护](docs/OPERATIONS.md) |
 | 蓝牙、文件、音频协议 | [协议说明](docs/PROTOCOL.md) |
 | 验证范围与未解决事项 | [验证记录](docs/VALIDATION.md) |
+| 本次发布复核与修复 | [公开版复核](docs/REVIEW.md) |
 | 密钥与发布边界 | [安全说明](SECURITY.md) |
 
 只看代码或做离线开发：
@@ -62,6 +63,7 @@ cd wrist-codex
 npm ci
 npm test
 python scripts/test-native.py
+python scripts/test-publication.py
 python scripts/check-publication.py
 ~~~
 

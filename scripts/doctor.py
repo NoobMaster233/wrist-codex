@@ -13,7 +13,7 @@ parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--adb', action='store_true', help='Check only the explicitly selected ADB transport')
 args = parser.parse_args()
 checks = {}
-for command in ['node', 'npm', 'python', 'adb', 'openssl']:
+for command in ['node', 'npm', 'python', 'adb', 'openssl', 'flock']:
     checks[command] = shutil.which(command) is not None
 for name in ['direct-bluetooth-auth.json', 'private-link-auth.json', 'private-link-v1.key']:
     path = root / '.local' / name

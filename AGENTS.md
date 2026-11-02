@@ -6,7 +6,7 @@ docs/SETUP.md and docs/ARCHITECTURE.md.
 
 ## Work offline first
 
-- Run npm ci, npm test, python scripts/test-native.py,
+- Run npm ci, npm test, python scripts/test-native.py, python scripts/test-publication.py,
   python scripts/check-publication.py and python scripts/doctor.py.
 - Tests must not connect to a phone, capture audio, send a Codex prompt or
   install anything. Hardware verification is a separate operation.
