@@ -1,0 +1,149 @@
+<template>
+  <div class="page">
+    <div class="header">
+      <input if="view !== 'home'" class="nav nav-back" type="button" value="‹" onclick="goBack" />
+      <image if="view === 'home'" class="brand-mark" src="/common/logo.png" />
+      <text class="title">{{ view === 'home' ? 'CODEX' : title }}</text>
+      <input if="view === 'messages'" class="nav" type="button" value="···" onclick="showActions" />
+      <input if="view === 'home'" class="nav" type="button" value="工具" onclick="showTools" />
+    </div>
+    <div class="status-strip">
+      <div class="status-dot {{ statusTone }}"></div>
+      <text class="status">{{ status }}</text>
+      <text class="clock">{{ clockLabel }}</text>
+    </div>
+    <scroll if="view !== 'messages'" id="pageScroll" class="content" scroll-y="true">
+      <div if="view === 'home'" class="column">
+        <div class="welcome">
+          <text class="eyebrow">{{ dateLabel }}  /  ON YOUR WRIST</text>
+          <text class="hero">想法，
+从这里继续。</text>
+          <text class="hint greeting">{{ greeting }}</text>
+        </div>
+        <div class="launch-card {{ busy ? 'dimmed' : '' }}" onclick="loadProjects">
+          <div class="card-copy"><text class="card-kicker">WORKSPACE</text><text class="launch-title">{{ busy ? '正在读取…' : '我的项目' }}</text></div>
+          <text class="launch-arrow">↗</text>
+        </div>
+        <div if="threadId" class="resume-card" onclick="resumeThread">
+          <div class="resume-dot"></div><div class="card-copy"><text class="card-kicker">接着聊</text><text class="card-title one-line">{{ threadTitle }}</text></div><text class="chevron">›</text>
+        </div>
+        <div class="home-bottom"><text class="mini">说出想法 · 读到回应</text><text class="edition">ORBIT  /  01</text></div>
+      </div>
+      <div if="view === 'projects'" class="column">
+        <div class="section-heading"><text class="eyebrow">WORKSPACES</text><text class="count">{{ projects.length }}</text></div>
+        <text class="section-note">选一个项目，接着往下做。</text>
+        <div class="card" for="projects" onclick="chooseProject($item)">
+          <div class="project-glyph"><text class="glyph-text">/</text></div>
+          <div class="card-copy"><text class="card-title">{{ $item.name }}</text><text class="meta">打开工作区</text></div><text class="chevron">›</text>
+        </div>
+        <div if="!projects.length" class="empty-card"><text class="empty-title">第一步，从手机开始</text><text class="hint">在手机 Codex 打开项目，它就会出现在这里。</text></div>
+        <input class="quiet" type="button" value="重新读取" onclick="loadProjects" />
+      </div>
+      <div if="view === 'threads'" class="column">
+        <text class="eyebrow">CONVERSATIONS</text><text class="section-note">最近的对话，都在这里。</text>
+        <div class="card thread-card" for="threads" onclick="chooseThread($item)">
+          <div class="card-copy"><text class="card-title">{{ $item.title }}</text><text class="meta">{{ $item.label }}</text></div><text class="chevron">›</text>
+        </div>
+        <div if="!threads.length" class="empty-card"><text class="empty-title">留白，等一个好想法</text><text class="hint">这个项目还没有对话。在手机创建后即可继续。</text></div>
+        <input if="threadCursor" class="secondary" type="button" value="更早的对话" onclick="moreThreads" />
+      </div>
+      <div if="view === 'reading'" class="column">
+        <text class="eyebrow">{{ readingRole }}  /  {{ readingPage }}</text><text class="reading-body">{{ readingText }}</text>
+        <text if="readingNext === null" class="footnote">— 已读到末尾 —</text>
+      </div>
+      <div if="view === 'draft'" class="column">
+        <text class="eyebrow">READY WHEN YOU ARE</text><text class="page-hero">把这段话，发出去。</text>
+        <text class="draft-target">{{ threadTitle }}</text><div class="draft-card"><text class="body">{{ draft }}</text></div>
+        <text class="hint">确认内容，点下方发送。</text><input class="quiet" type="button" value="先保留，返回输入" onclick="showInput" />
+      </div>
+      <div if="view === 'input'" class="column">
+        <text class="eyebrow">VOICE NOTE</text><text class="draft-target">{{ threadTitle }}</text>
+        <div class="voice-orbit"><div class="voice-center"><div class="mic-pill"></div><div class="mic-cradle"></div><div class="mic-stem"></div></div><text class="voice-label">让想法，有声音。</text></div>
+        <text if="pendingRecording && pendingRecording.pending" class="notice">还有一份录音或草稿，处理后就能再录。</text>
+        <input class="primary large" type="button" value="开始录音" onclick="armRecording" />
+        <input class="secondary" type="button" value="录音与草稿" onclick="showRecordingManager" /><text class="footnote">最长 24 秒 · 转成文字后，由你发送</text>
+      </div>
+      <div if="view === 'recording-manager'" class="column">
+        <text class="eyebrow">SAVED FOR LATER</text>
+        <div if="!pendingRecording || !pendingRecording.pending" class="empty-card"><text class="empty-title">这里还很安静</text><text class="hint">没有待处理录音或草稿。</text></div>
+        <div if="pendingRecording && pendingRecording.pending" class="column">
+          <text class="page-hero">{{ pendingRecording.phase === 'ready' ? '有一段话，等你确认。' : '有一段录音，正在处理。' }}</text>
+          <text class="draft-target">{{ pendingRecording.target.threadTitle }}</text>
+          <input class="primary" type="button" value="{{ pendingRecording.phase === 'ready' ? '查看草稿' : '回到录音' }}" onclick="reviewPendingRecording" />
+          <input class="quiet" type="button" value="{{ pendingRecording.phase === 'ready' ? '丢弃这份草稿' : '取消本次录音' }}" onclick="discardPendingRecording" />
+        </div>
+        <input class="secondary" type="button" value="返回输入" onclick="showInput" /><input class="quiet" type="button" value="更新状态" onclick="showRecordingManager" />
+      </div>
+      <div if="view === 'recording'" class="column">
+        <div class="section-heading"><text class="eyebrow">{{ recordingPhase === 'recording' ? 'LISTENING' : 'VOICE NOTE' }}</text><text if="recordingPhase === 'recording'" class="count">{{ recordingSeconds }}s</text></div><text class="draft-target">{{ threadTitle }}</text>
+        <div class="waveform"><div class="wave w1"></div><div class="wave w2"></div><div class="wave w3"></div><div class="wave w4"></div><div class="wave w3"></div><div class="wave w2"></div><div class="wave w1"></div></div>
+        <text class="page-hero">{{ recordingPhase === 'recording' ? '我在听。' : recordingPhase === 'transcribing' ? '让声音，成为文字。' : recordingPhase === 'receiving' ? '正在送达手机。' : recordingPhase === 'preparing' ? '准备好了就开口。' : '这段录音' }}</text>
+        <text class="hint">{{ recordingHelp }}</text>
+        <input if="recordingPhase === 'recording'" class="primary large" type="button" value="说完了，转成文字" onclick="finishRecording" />
+        <input if="recordingPhase === 'preparing' || recordingPhase === 'recording' || recordingPhase === 'receiving' || recordingPhase === 'transcribing'" class="quiet" type="button" value="取消这次录音" onclick="cancelRecording" />
+        <input class="secondary" type="button" value="查看当前状态" onclick="checkRecordingStatus" /><text class="footnote">最长 24 秒 · 录音不会自动发送</text>
+      </div>
+      <div if="view === 'actions'" class="column">
+        <text class="eyebrow">KEEP THE FLOW</text><text class="draft-target">{{ threadTitle }}</text>
+        <input class="primary" type="button" value="接着说“继续”" onclick="prepareContinue" /><text class="hint">先生成草稿，确认后发送。</text>
+        <input class="secondary" type="button" value="回到最新回复" onclick="backToLatest" /><input class="secondary" type="button" value="换一个对话" onclick="switchThread" /><input class="quiet" type="button" value="切换项目" onclick="loadProjects" />
+      </div>
+      <div if="view === 'tools'" class="column">
+        <text class="eyebrow">CONTROL ROOM</text><text class="page-hero">一切，尽在腕上。</text>
+        <div class="info-card"><div class="section-heading"><text class="card-title">手机连接</text><div class="status-dot {{ statusTone }}"></div></div><text class="hint">{{ status }}</text><input class="inset-button" type="button" value="检测连接" onclick="checkConnection" /></div>
+        <div class="card" onclick="showTerminal"><div class="terminal-glyph"><text class="glyph-text">›_</text></div><div class="card-copy"><text class="card-title">手环终端</text><text class="meta">系统 · 存储 · 文件</text></div><text class="chevron">›</text></div>
+        <div class="info-card"><text class="card-title">关于语音</text><text class="hint">在对话中点“说一句”，用手环录音。手机转成文字，核对后发送。</text></div>
+        <text class="footnote">CODEX  /  ORBIT 01  /  {{ appVersion }}</text>
+      </div>
+      <div if="view === 'terminal'" class="column">
+        <text class="eyebrow">ON THE BAND</text><text class="section-note">命令在手环上执行。</text>
+        <div if="shellCommandLabel" class="terminal-output"><text class="command">$ {{ shellCommandLabel }}</text><text class="meta">{{ shellStateLabel }}</text><text if="shellResult" class="terminal-body">{{ shellResult }}</text></div>
+        <div class="card compact {{ shellRunning ? 'dimmed' : '' }}" for="shellPresets" onclick="runShellPreset($item)"><div class="card-copy"><text class="card-title">{{ $item.name }}</text><text class="meta">{{ $item.hint }}</text></div><text class="chevron">›</text></div>
+        <text class="footnote">更多命令和文件操作可从手机发起。</text>
+      </div>
+    </scroll>
+    <scroll if="view === 'messages'" id="messageScroll" class="content messages-scroll" scroll-y="true" onscroll="messageScrolled" onscrollbottom="messageAtBottom">
+      <input if="messageCursor" class="quiet" type="button" value="更早的消息" onclick="olderMessages" /><text if="!messages.length" class="empty">想聊点什么？
+点下方，说出第一个想法。</text>
+      <div class="message {{ $item.role === 'user' ? 'user-message' : '' }}" for="messages"><div class="message-heading"><div class="message-dot"></div><text class="role">{{ $item.role === 'user' ? '你' : 'CODEX' }}</text></div><text class="body">{{ $item.text }}</text><input if="$item.truncated" class="read-more" type="button" value="继续阅读  ↗" onclick="readMessage($item)" /></div>
+      <text class="footnote">{{ newReplies ? '新回复到了 · 点下方查看' : viewingLatest ? '保持连接，回复会自己来。' : '— 本页读完了 —' }}</text>
+    </scroll>
+    <div if="view === 'messages'" class="toolbar {{ busy ? 'dimmed' : '' }}"><input class="secondary toolbar-small" type="button" value="{{ newReplies ? '新回复' : '更新' }}" onclick="refreshMessages" /><input class="primary toolbar-main" type="button" value="说一句" onclick="showInput" /></div>
+    <div if="view === 'draft'" class="toolbar {{ busy ? 'dimmed' : '' }}"><input class="secondary toolbar-small discard-button" type="button" value="取消" onclick="cancelDraft" /><input class="primary toolbar-main" type="button" value="{{ sending ? '发送中…' : busy ? '正在同步…' : sendUncertain ? '核实发送' : '确认发送  ↗' }}" onclick="sendDraft" /></div>
+    <div if="view === 'reading' && (readingOffset > 0 || readingNext !== null)" class="toolbar {{ busy ? 'dimmed' : '' }}"><input if="readingOffset > 0" class="secondary half" type="button" value="上一页" onclick="previousMessagePage" /><input if="readingNext !== null" class="primary half" type="button" value="下一页" onclick="nextMessagePage" /></div>
+  </div>
+</template>
+
+<script>
+import interconnect from '@system.interconnect';
+import file from '@system.file';
+import createWorkspace from '../../common/workspace-page.mjs';
+export default createWorkspace({interconnect,file,loadEvent:()=>require('@system.event'),loadBrightness:()=>require('@system.brightness')});
+</script>
+
+<style>
+.page { width: 100%; height: 100%; padding: 22px 18px 22px; background-color: #080b10; flex-direction: column; }
+.header { width: 100%; height: 46px; flex-shrink: 0; align-items: center; margin-bottom: 4px; }
+.brand-mark { width: 34px; height: 34px; margin-right: 10px; }
+.title { flex: 1; height: 36px; font-size: 23px; font-weight: bold; color: #f4f1e9; lines: 1; text-overflow: ellipsis; }
+.nav { width: 52px; height: 42px; margin-bottom: 0; background-color: #171c26; color: #c8cffb; font-size: 18px; border-radius: 18px; }
+.nav-back { width: 38px; margin-right: 8px; font-size: 30px; background-color: #10151e; }
+.status-strip { width: 100%; min-height: 30px; flex-shrink: 0; align-items: center; padding: 2px 1px 8px; }
+.status-dot { width: 6px; height: 6px; border-radius: 3px; margin-right: 7px; background-color: #717b91; }
+.ready { background-color: #d3efa2; }.working { background-color: #e7bc83; }.error { background-color: #ed9d9f; }
+.status { flex: 1; font-size: 15px; line-height: 22px; color: #9099aa; lines: 1; text-overflow: ellipsis; }
+.clock { width: 52px; margin-left: 8px; font-size: 17px; color: #c8cffb; text-align: right; }
+.content { width: 100%; height: 0; flex: 1; flex-direction: column; }.messages-scroll { height: 0; }.column { width: 100%; flex-direction: column; }
+.welcome { width: 100%; flex-direction: column; padding: 14px 4px 8px; }.eyebrow { font-size: 14px; line-height: 22px; color: #aab3e4; margin-bottom: 10px; }
+.hero { width: 100%; font-size: 32px; line-height: 40px; font-weight: bold; color: #f4f1e9; margin-bottom: 12px; }.page-hero { width: 100%; font-size: 29px; line-height: 39px; font-weight: bold; color: #f4f1e9; margin: 4px 0 16px; }
+.hint { width: 100%; font-size: 18px; line-height: 27px; color: #929db0; margin: 8px 0 12px; }.greeting { font-size: 16px; line-height: 23px; margin: 0 0 6px; }
+.launch-card { width: 100%; min-height: 90px; padding: 14px 20px; margin-bottom: 12px; border-radius: 24px; align-items: center; background-color: #c8cffb; }.launch-title { width: 100%; font-size: 28px; font-weight: bold; color: #13192b; margin-top: 4px; }.launch-arrow { width: 45px; font-size: 40px; color: #293555; text-align: right; }
+.card-kicker { font-size: 13px; color: #707fa4; }.resume-card { width: 100%; min-height: 76px; padding: 14px 16px; margin-bottom: 10px; border-radius: 22px; background-color: #151b23; align-items: center; }.resume-dot { width: 8px; height: 8px; border-radius: 4px; margin-right: 14px; background-color: #d3efa2; }.home-bottom { width: 100%; padding: 13px 5px; justify-content: space-between; }.mini { font-size: 14px; color: #8c96a6; }.edition { font-size: 12px; color: #637087; }
+.section-heading { width: 100%; align-items: center; justify-content: space-between; }.section-heading .card-title { flex: 1; }.count { font-size: 21px; color: #c8cffb; }.section-note { width: 100%; font-size: 17px; line-height: 25px; color: #929db0; margin: 4px 0 16px; lines: 2; text-overflow: ellipsis; }
+.card { width: 100%; min-height: 88px; padding: 16px; margin-bottom: 10px; background-color: #151b24; border-radius: 22px; align-items: center; }.thread-card { border-radius: 18px; }.compact { min-height: 76px; }.card-copy { flex: 1; flex-direction: column; }.card-title { width: 100%; font-size: 22px; line-height: 30px; font-weight: bold; color: #eeeee8; lines: 2; text-overflow: ellipsis; }.one-line { lines: 1; font-size: 20px; }.meta { width: 100%; font-size: 15px; line-height: 23px; color: #94a1b6; margin-top: 6px; }.chevron { width: 18px; font-size: 29px; color: #aab3e4; margin-left: 8px; text-align: right; }.project-glyph { width: 38px; height: 46px; margin-right: 12px; align-items: center; justify-content: center; border-radius: 12px; background-color: #222c40; }.terminal-glyph { width: 42px; height: 46px; margin-right: 12px; align-items: center; justify-content: center; }.glyph-text { font-size: 26px; color: #c8cffb; }
+.message { width: 100%; flex-direction: column; padding: 16px 14px; margin-bottom: 12px; background-color: #151b24; border-radius: 20px; }.user-message { background-color: #1e2923; }.message-heading { width: 100%; align-items: center; margin-bottom: 9px; }.message-dot { width: 5px; height: 5px; border-radius: 3px; background-color: #c8cffb; margin-right: 7px; }.role { flex: 1; font-size: 14px; font-weight: bold; color: #b9c2ec; }.body { width: 100%; font-size: 22px; line-height: 33px; color: #eeeee8; }.reading-body { width: 100%; font-size: 23px; line-height: 35px; color: #eeeee8; padding: 8px 2px 16px; }.draft-target { width: 100%; font-size: 17px; line-height: 26px; color: #a9b4c5; margin: 0 0 16px; lines: 2; text-overflow: ellipsis; }.draft-card { width: 100%; flex-direction: column; padding: 18px 15px; border-radius: 20px; background-color: #1e2923; margin-bottom: 12px; }
+.info-card { width: 100%; flex-direction: column; padding: 18px 16px; background-color: #151b24; border-radius: 22px; margin-bottom: 12px; }.empty-card { width: 100%; flex-direction: column; padding: 24px 16px; background-color: #121821; border-radius: 22px; margin: 12px 0 18px; }.empty-title { width: 100%; font-size: 24px; line-height: 34px; color: #e4e8ef; }.empty { width: 100%; font-size: 20px; line-height: 32px; color: #929db0; padding: 30px 10px; }.footnote { width: 100%; font-size: 15px; line-height: 24px; color: #7c899e; text-align: center; padding: 10px 4px 16px; }.notice { width: 100%; padding: 12px; margin-bottom: 12px; border-radius: 14px; background-color: #30271e; color: #e7bc83; font-size: 17px; line-height: 25px; }
+.voice-orbit { width: 100%; height: 142px; margin-bottom: 16px; flex-direction: column; align-items: center; justify-content: center; }.voice-center { width: 74px; height: 74px; border-radius: 37px; border-width: 1px; border-color: #5b6c53; background-color: #1e2923; align-items: center; justify-content: center; }.mic-pill { position: absolute; width: 13px; height: 25px; left: 30px; top: 17px; border-radius: 7px; background-color: #d3efa2; }.mic-cradle { position: absolute; left: 24px; top: 28px; width: 25px; height: 23px; border-width: 2px; border-color: #d3efa2; border-top-width: 0px; border-radius: 12px; }.mic-stem { position: absolute; left: 35px; top: 50px; width: 3px; height: 9px; background-color: #d3efa2; }.voice-label { margin-top: 14px; font-size: 20px; color: #c7d6c7; }.waveform { height: 74px; width: 100%; align-items: center; justify-content: center; margin: 8px 0 22px; }.wave { width: 7px; margin: 0 5px; border-radius: 4px; background-color: #d3efa2; }.w1 { height: 14px; }.w2 { height: 28px; }.w3 { height: 48px; }.w4 { height: 66px; }
+input { width: 100%; height: 56px; margin-bottom: 10px; font-size: 21px; border-radius: 20px; }.primary { background-color: #d3efa2; color: #17211c; font-weight: bold; }.secondary { background-color: #202837; color: #d0d7ef; }.quiet { background-color: #111721; color: #98a5ba; font-size: 18px; }.large { height: 64px; font-size: 23px; }.inset-button { height: 44px; margin-bottom: 0; border-radius: 14px; background-color: #252e40; color: #c8cffb; font-size: 18px; }.read-more { height: 44px; margin-top: 14px; margin-bottom: 0; border-radius: 14px; background-color: #252e40; color: #c8cffb; font-size: 18px; }
+.toolbar { width: 100%; height: 70px; padding-top: 10px; flex-shrink: 0; align-items: center; }.toolbar-small { width: 30%; margin-right: 3%; margin-bottom: 0; }.toolbar-main { width: 67%; margin-bottom: 0; }.discard-button { font-size: 18px; }.half { width: 48%; margin-right: 2%; margin-bottom: 0; }.dimmed { opacity: 0.5; }.terminal-output { width: 100%; flex-direction: column; padding: 14px; margin-bottom: 16px; background-color: #121c19; border-radius: 18px; }.command { width: 100%; font-size: 17px; line-height: 25px; color: #d3efa2; }.terminal-body { width: 100%; font-size: 18px; line-height: 27px; color: #c2d2c8; margin-top: 12px; }
+</style>

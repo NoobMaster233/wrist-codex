@@ -1,0 +1,8 @@
+{
+  "inputHex": "3031323334353637383900ff",
+  "resumeBytes": 4,
+  "sliceLength": 17,
+  "fullMd5": "1f5ed4e8336ea6fdfcd06b2e424d439a",
+  "innerHex": "00101f5ed4e8336ea6fdfcd06b2e424d439a0800000034353637383900ffd77ec0fb",
+  "generatedBy": "Python hashlib.md5, struct.pack and zlib.crc32; independent of JavaScript encoder"
+}

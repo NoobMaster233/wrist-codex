@@ -1,0 +1,28 @@
+{
+  "firmware": "3.101.043",
+  "model": "M2551B1",
+  "elf": "ET_REL",
+  "modules": {
+    "audio": {
+      "artifact": "resources/native/3.101.043/audio.ko",
+      "bytes": 7056,
+      "sha256": "cb95e31b0771607f97aa2105270cc12bfb6b400b3e758d43771b830171f55bda",
+      "source": "phone-research/native-audio/audio-service-043.c",
+      "deviceTested": true
+    },
+    "shell": {
+      "artifact": "resources/native/3.101.043/shell.ko",
+      "bytes": 7916,
+      "sha256": "8cc72680192da2b60eb95d340bd88a04a5e320545f5ed8c8584ecbebca8e8518",
+      "source": "phone-research/native-audio/shell-service-043.c",
+      "deviceTested": true
+    },
+    "link": {
+      "artifact": "resources/native/3.101.043/link.ko",
+      "bytes": 19424,
+      "sha256": "2f79b1cc23fd3e6dabb8d04eb16d06f270beb1d762f97c1f2e04990254772167",
+      "source": "phone-research/native-audio/private-link-service-043.c",
+      "deviceTested": true
+    }
+  }
+}

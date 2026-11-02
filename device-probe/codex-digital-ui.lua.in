@@ -1,0 +1,86 @@
+-- Original drawn numerals: shared geometry with the SVG preview.
+local colors={background=@BG@,primary=@PRIMARY@,secondary=@SECONDARY@,
+ muted=@MUTED@,accent=@ACCENT@,rule=@RULE@,warning=@WARNING@}
+local root=lvgl.Object(nil,{w=336,h=480,bg_color=colors.background,bg_opa=lvgl.OPA(100),border_width=0,pad_all=0})
+root:clear_flag(lvgl.FLAG.SCROLLABLE)
+local fonts={}
+local function font(size)
+ if fonts[size] then return fonts[size] end
+ local ok,value=pcall(lvgl.Font,'MiSans-Regular',size)
+ if not ok or not value then value=lvgl.Font('MiSans-Regular',24) end
+ fonts[size]=value;return value
+end
+local function box(x,y,w,h,color,radius)
+ local object=lvgl.Object(root,{x=x,y=y,w=w,h=h,bg_color=color,bg_opa=lvgl.OPA(100),border_width=0,pad_all=0,radius=radius or 0})
+ object:clear_flag(lvgl.FLAG.SCROLLABLE);object:clear_flag(lvgl.FLAG.CLICKABLE)
+ return object
+end
+local function label(text,x,y,w,h,size,color,align)
+ return lvgl.Label(root,{text=text,x=x,y=y,width=w,height=h,text_color=color,text_font=font(size),text_align=align or 0})
+end
+@DRAWING@
+local date=label('',@DATE_ARGS@,colors.secondary,@DATE_ALIGN@)
+local battery=label('--%',@BATTERY_ARGS@,colors.secondary,@BATTERY_ALIGN@)
+local steps=label('--',@STEPS_ARGS@,colors.primary,@STEPS_ALIGN@)
+local heart=label('--',@HEART_ARGS@,colors.primary,@HEART_ALIGN@)
+label('步数',@STEP_LABEL_ARGS@,colors.muted,@STEP_LABEL_ALIGN@)
+label('心率',@HEART_LABEL_ARGS@,colors.muted,@HEART_LABEL_ALIGN@)
+local state=label('@NAME@',@STATE_ARGS@,colors.accent,@STATE_ALIGN@)
+local seconds=label('',@SECONDS_ARGS@,colors.accent,@SECONDS_ALIGN@)
+local weekdays={'周日','周一','周二','周三','周四','周五','周六'}
+local ui={clock='--:--',date='',tickCount=0,battery=false,steps=false,heart=false,subscriptions=0,paused=false,serviceReady=false}
+local function save_ui()
+ local value=string.format('{"version":@VERSION@,"theme":"@THEME@","renderer":"drawn-digits","glyphCount":10,"drawObjects":@DRAW_OBJECTS@,"clock":"%s","date":"%s","tickCount":%d,"battery":%s,"steps":%s,"heart":%s,"subscriptions":%d,"paused":%s,"serviceReady":%s}\n',ui.clock,ui.date,ui.tickCount,tostring(ui.battery),tostring(ui.steps),tostring(ui.heart),ui.subscriptions,tostring(ui.paused),tostring(ui.serviceReady))
+ pcall(write,P..'ui.json',value)
+end
+local last_time,last_date,last_seconds
+local function tick()
+ if ui.paused then return end
+ local t=os.date('%H:%M')
+ local d=tonumber(os.date('%m'))..'月'..tonumber(os.date('%d'))..'日 · '..weekdays[tonumber(os.date('%w'))+1]
+ local s=tonumber(os.date('%S'))
+ if t~=last_time then clock_render(t);last_time=t;ui.clock=t end
+ if d~=last_date then date:set{text=d};last_date=d;ui.date=d end
+ if s~=last_seconds then seconds:set{text=string.format('%02d',s)};@SECOND_UPDATE@;last_seconds=s end
+ ui.tickCount=ui.tickCount+1
+end
+local data_ok,dataman=pcall(require,'dataman')
+local subscriptions={}
+local function subscribe(key,object,callback)
+ if not data_ok or type(dataman.subscribe)~='function' then return end
+ local ok,token=pcall(dataman.subscribe,key,object,function(obj,raw)
+  if type(raw)~='number' or raw~=raw or raw==math.huge or raw==-math.huge then return end
+  pcall(callback,obj,math.floor(raw/256))
+ end)
+ if ok then ui.subscriptions=ui.subscriptions+1;if token~=nil then subscriptions[#subscriptions+1]=token end end
+end
+local function first_value(key)if not ui[key] then ui[key]=true;save_ui() end end
+subscribe('systemStatusBattery',battery,function(obj,value)
+ if value<0 or value>100 then return end
+ obj:set{text=tostring(value)..'%',text_color=value<=15 and colors.warning or colors.secondary};first_value('battery')
+end)
+subscribe('healthStepCount',steps,function(obj,value)
+ if value<0 or value>999999 then return end
+ local text=tostring(value)
+ if value>=100000 then text=string.format('%.1f万',value/10000)
+ elseif value>=1000 then text=tostring(math.floor(value/1000))..','..string.format('%03d',value%1000) end
+ obj:set{text=text};first_value('steps')
+end)
+subscribe('healthHeartRate',heart,function(obj,value)
+ if value<30 or value>240 then obj:set{text='--'};return end
+ obj:set{text=tostring(value)};first_value('heart')
+end)
+tick()
+local timer=lvgl.Timer{period=1000,cb=tick}
+local function pause_data(method)
+ if data_ok and type(dataman[method])=='function' then for _,token in ipairs(subscriptions)do pcall(dataman[method],token) end end
+end
+pageOnPause=function()ui.paused=true;timer:pause();pause_data('pause');save_ui()end
+pageOnResume=function()ui.paused=false;tick();pause_data('resume');timer:resume();save_ui()end
+local function service_state(ok)
+ ui.serviceReady=ok
+ if not ok then
+  state:set{text='语音待恢复',x=30,y=8,width=276,height=25,text_font=font(15),text_color=colors.warning,text_align=2}
+ end
+ save_ui()
+end

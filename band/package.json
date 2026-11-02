@@ -1,0 +1,13 @@
+{
+  "name": "band-codex",
+  "version": "0.4.3",
+  "private": true,
+  "scripts": {
+    "build": "aiot build",
+    "release": "aiot release"
+  },
+  "devDependencies": {
+    "aiot-toolkit": "1.1.4"
+  },
+  "license": "MIT"
+}

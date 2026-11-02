@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="336" height="480" viewBox="0 0 336 480">
+  <rect width="336" height="480" rx="34" fill="#171215"/>
+  <g font-family="sans-serif">
+    <text x="29" y="55" fill="#baa79c" font-size="18">10月27日 · 周二</text>
+    <text x="307" y="54" fill="#baa79c" font-size="17" text-anchor="end">86%</text>
+    <g fill="#f4e6d2" font-size="126" font-weight="500">
+      <text x="22" y="202">20</text>
+      <text x="22" y="329">36</text>
+    </g>
+    <circle cx="265" cy="216" r="64.5" fill="none" stroke="#60433c"/>
+    <circle cx="265" cy="216" r="42" fill="#eda37a"/>
+    <g fill="#171215">
+      <rect x="223" y="230" width="84" height="3"/>
+      <rect x="223" y="238" width="84" height="4"/>
+      <rect x="223" y="246" width="84" height="5"/>
+      <rect x="223" y="254" width="84" height="5"/>
+    </g>
+    <circle cx="278.3" cy="278.6" r="4" fill="#f4e6d2"/>
+    <text x="265" y="316" fill="#c88c70" font-size="18" text-anchor="middle" letter-spacing="5">余晖</text>
+    <path d="M30 369H306" stroke="#382b2b"/>
+    <text x="30" y="418" fill="#f4e6d2" font-size="28">6,842</text>
+    <text x="306" y="418" fill="#f4e6d2" font-size="28" text-anchor="end">72</text>
+    <text x="31" y="445" fill="#a68f83" font-size="16">步数</text>
+    <text x="305" y="445" fill="#a68f83" font-size="16" text-anchor="end">心率</text>
+  </g>
+</svg>

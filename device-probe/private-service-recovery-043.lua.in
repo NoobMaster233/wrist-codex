@@ -1,0 +1,94 @@
+-- Pinned recovery of previously adopted .043 services. No recording or reboot.
+local lvgl=require('lvgl')
+local P='/data/files/dev.bandcodex.remote/bc-private-recovery-v@REV@-'
+local RECOVERY_VERSION=@REV@
+local LINK_STATUS_VERSION=@LINK_STATUS_VERSION@
+local ALLOW_LINK_MIGRATION=@ALLOW_LINK_MIGRATION@
+local OLD_LINK_STATE='/data/bc-private-link-bootstrap-043-v1.state'
+local OLD_LINK_SHA='2dc58d207dbc6e2b4ee7f10f4f24884988a8ec373d18259dd66405ba17d7f381'
+local function read(path,limit)
+ local f=io.open(path,'rb');if not f then return nil end
+ local s=f:read(limit);f:close();return s or ''
+end
+local function write(path,s)
+ local f=assert(io.open(path,'wb'));assert(f:write(s));assert(f:close());assert(read(path,#s+1)==s)
+end
+local function execute(command)
+ local ok,why,code=os.execute(command)
+ assert((ok==true or ok==0) and (code==nil or code==0),'command failed')
+end
+local function unhex(s)return(s:gsub('..',function(h)return string.char(tonumber(h,16))end))end
+local definitions={
+ {name='bc_audio043',path='@AUDIO_PATH@',sha='@AUDIO_SHA@',bytes=unhex('@AUDIO_HEX@'),state='/data/bc-native-audio-bootstrap-043-v1.state',status='/data/files/dev.bandcodex.remote/bc-native-audio-service-043-v1.status',kind='audio'},
+ {name='bc_shell043',path='@SHELL_PATH@',sha='@SHELL_SHA@',bytes=unhex('@SHELL_HEX@'),state='/data/bc-native-shell-bootstrap-043-v1.state',status='/data/files/dev.bandcodex.remote/bc-nsh-shell-v1.service',kind='shell'},
+ {name='bc_link043',path='@LINK_PATH@',sha='@LINK_SHA@',bytes=unhex('@LINK_HEX@'),state='@LINK_STATE@',status='/data/files/dev.bandcodex.remote/bc-private-link-v1.status',kind='link'}
+}
+local root=lvgl.Object(nil,{w=336,h=480,bg_color=0x090e16,bg_opa=lvgl.OPA(100),border_width=0,pad_all=0})
+root:clear_flag(lvgl.FLAG.SCROLLABLE)
+local function label(text,y,size,color)
+ return lvgl.Label(root,{text=text,x=12,y=y,width=312,height=size+24,text_align=2,text_color=color,text_font=lvgl.Font('MiSans-Regular',size)})
+end
+label('C O D E X',48,24,0x99e8c6)
+local clock=label('',146,82,0xf2f5fa)
+local date=label('',258,23,0x8e9cb2)
+local state=label('正在连接手机',352,22,0x99e8c6)
+local function tick()clock:set{text=os.date('%H:%M')};date:set{text=os.date('%m月%d日')}end
+tick()
+local clock_timer=lvgl.Timer{period=1000,cb=tick}
+local function word(s,p)
+ local a,b,c,d=s:byte(p,p+3);assert(d,'short status');return a+256*b+65536*c+16777216*d
+end
+local function healthy(def)
+ local s=read(def.status,73)
+ if def.kind=='shell' then return s=='ready:shell043-v1\n' end
+ if def.kind=='link' then return s and #s==72 and s:sub(1,8)=='BCLN0431' and word(s,9)==LINK_STATUS_VERSION and (word(s,13)==5 or word(s,13)==6) and word(s,21)==0 end
+ if not s or #s~=64 or s:sub(1,8)~='BCAP0432' or word(s,9)~=2 or word(s,13)~=16000 or word(s,17)~=20 then return false end
+ local n=word(s,61);return n==2 or n==3 or n==4 or n==18 or n==101
+end
+local function listed(name)
+ execute('lsmod > '..P..'modules.txt')
+ local s=assert(read(P..'modules.txt',4097));assert(#s<=4096 and s:match('^NAME%s'),'invalid module list')
+ local n=0;for line in s:gmatch('[^\r\n]+')do if line:match('^(%S+)')==name then n=n+1 end end
+ assert(n<=1,'duplicate module');return n==1
+end
+local current,waiting,ticks,finished=1,false,0,false
+local recovery_timer
+local function finish(ok,message)
+ finished=true
+ if recovery_timer then recovery_timer:pause()end
+ pcall(write,P..'report.txt','recovery-v'..RECOVERY_VERSION..':'..(ok and 'ready' or 'blocked')..'\n'..tostring(message):sub(1,1000))
+ state:set{text=ok and '服务已就绪' or '服务需要检查',text_color=ok and 0x99e8c6 or 0xffbf69}
+end
+local function step()
+ if finished then return end
+ local def=definitions[current]
+ if not def then finish(true,'audio,shell,link ready');return end
+ local good='healthy:'..def.sha..'\n'
+ if waiting then
+  ticks=ticks+1
+  if healthy(def) then
+   assert(listed(def.name),'new module not listed');write(def.state,good);current=current+1;waiting=false
+  else assert(ticks<70,'service readiness timeout')end
+ elseif listed(def.name) then
+  assert(healthy(def),'resident service not ready');write(def.state,good);current=current+1
+ else
+  -- Only modules previously confirmed healthy may load again after reboot.
+  local prior=read(def.state,256)
+  local migrate=ALLOW_LINK_MIGRATION and def.kind=='link' and prior==nil and read(OLD_LINK_STATE,256)=='healthy:'..OLD_LINK_SHA..'\n'
+  assert(prior==good or migrate,'prior load uncertain; no retry')
+  write(def.state,'pending:'..def.sha..'\n')
+  execute('insmod '..def.path..' '..def.name..' > '..P..def.kind..'-load.txt')
+  waiting=true;ticks=0
+ end
+end
+local function boot()
+ for _,def in ipairs(definitions)do assert(read(def.path,#def.bytes+1)==def.bytes,'module differs: '..def.kind)end
+ execute('getprop ro.build.version > '..P..'fw.txt')
+ assert((read(P..'fw.txt',128) or ''):match('^%s*([%d._]+)')=='3.101.043','firmware differs')
+ assert(#(read('/data/files/dev.bandcodex.remote/bc-private-link-v1.key',33) or '')==32,'private key missing')
+ recovery_timer=lvgl.Timer{period=100,cb=function()local ok,err=pcall(step);if not ok then finish(false,err)end end}
+ step()
+end
+local ok,err=pcall(boot);if not ok then finish(false,err)end
+pageOnPause=function()clock_timer:pause();if recovery_timer then recovery_timer:pause()end end
+pageOnResume=function()tick();clock_timer:resume();if recovery_timer and not finished then recovery_timer:resume()end end

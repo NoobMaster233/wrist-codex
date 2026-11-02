@@ -1,0 +1,37 @@
+{
+  "package": "dev.bandcodex.remote",
+  "name": "腕上 Codex",
+  "versionName": "0.4.3",
+  "versionCode": 37,
+  "minPlatformVersion": 1000,
+  "icon": "/common/logo.png",
+  "deviceTypeList": [
+    "watch"
+  ],
+  "features": [
+    {
+      "name": "system.interconnect"
+    },
+    {
+      "name": "system.brightness"
+    },
+    {
+      "name": "system.file"
+    },
+    {
+      "name": "system.event"
+    }
+  ],
+  "config": {
+    "logLevel": "log",
+    "designWidth": 336
+  },
+  "router": {
+    "entry": "pages/index",
+    "pages": {
+      "pages/index": {
+        "component": "index"
+      }
+    }
+  }
+}

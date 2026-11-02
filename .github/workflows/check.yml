@@ -1,0 +1,25 @@
+name: Offline checks
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  source:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install offline test prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y lua5.4 build-essential
+      - run: npm ci --ignore-scripts
+      - run: npm test
+      - run: python3 scripts/test-native.py
+      - run: python3 test/direct-service-policy-test.py
+      - run: python3 scripts/test-public-setup.py
+      - run: python3 scripts/check-publication.py

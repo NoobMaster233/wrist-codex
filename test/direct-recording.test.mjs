@@ -1,0 +1,108 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdtemp, rm, readFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { createHash } from 'node:crypto';
+import { setTimeout as delay } from 'node:timers/promises';
+import { DirectRecording } from '../bridge/direct-recording.mjs';
+import { AstroRelay, createAstroServer } from '../bridge/astro-server.mjs';
+
+const audio = Buffer.concat([Buffer.from('OggS'), Buffer.alloc(25), Buffer.from('OpusHead'), Buffer.alloc(100)]);
+async function setup(t, transcribe) {
+  const root = await mkdtemp(join(tmpdir(), 'band-direct-')), commands = [];
+  const rec = new DirectRecording({ stateFile: join(root, 'state.json'), audioRoot: join(root, 'audio'), command: c => commands.push(c),
+    ready: async () => {}, validateTarget: async p => ({ ...p, projectName: 'test' }), transcribe });
+  await rec.init(); t.after(async () => { rec.close(); await rec.writes; await rm(root, { recursive: true, force: true }); });
+  return { rec, root, commands };
+}
+const target = { threadId: 'thread_a', cwd: '/project/a', threadTitle: 'Test' };
+test('direct transfer is transcribed once, persists draft and isolates its conversation', async t => {
+  let calls = 0;
+  const { rec, root } = await setup(t, async file => { calls++; return { sha256: createHash('sha256').update(await readFile(file)).digest('hex'), text: '测试草稿', durationMs: 4000 }; });
+  const session = await rec.handle({ method: 'recording.arm', params: target });
+  await rec.telemetry({ sessionId: session.sessionId, phase: 'recording' });
+  const ready = new Promise(resolve => rec.on('state', state => { if (state.phase === 'ready') resolve(); }));
+  await Promise.all([rec.ingest(session.sessionId, audio), rec.ingest(session.sessionId, audio)]);
+  await ready;
+  assert.equal(calls, 1); assert.equal(rec.snapshot('thread_a').text, '测试草稿');
+  assert.deepEqual(rec.snapshot('thread_b'), { phase: 'idle' });
+  await assert.rejects(rec.handle({ method: 'recording.arm', params: { ...target, threadId: 'thread_b' } }));
+  assert.equal(JSON.parse(await readFile(join(root, 'state.json'))).text, '测试草稿');
+  const pending=await rec.handle({method:'recording.pending'});
+  assert.equal(pending.pending,true);assert.equal(pending.target.threadId,'thread_a');
+  await assert.rejects(rec.handle({method:'recording.discard',params:{threadId:'thread_b',sessionId:session.sessionId}}));
+  assert.equal(rec.state.phase,'ready');
+  await assert.rejects(rec.handle({method:'recording.discard',params:{threadId:'thread_a',sessionId:'stale-session'}}));
+  assert.equal(rec.state.phase,'ready');
+  await rec.handle({method:'recording.discard',params:{threadId:'thread_a',sessionId:session.sessionId}});
+  assert.equal((await rec.handle({method:'recording.pending'})).pending,false);
+  const next=await rec.handle({method:'recording.arm',params:target});assert.notEqual(next.sessionId,session.sessionId);
+});
+test('cancelled recording ignores late telemetry/audio/transcription results', async t => {
+  let finish; const deferred = new Promise(resolve => { finish = resolve; });
+  const { rec, commands } = await setup(t, () => deferred);
+  const session = await rec.handle({ method: 'recording.arm', params: target });
+  await rec.telemetry({ sessionId: session.sessionId, phase: 'receiving' });
+  await rec.ingest(session.sessionId, audio);
+  await rec.handle({ method: 'recording.cancel', params: { ...target, sessionId: session.sessionId } });
+  finish({ sha256: createHash('sha256').update(audio).digest('hex'), text: '迟到结果' }); await delay(10);
+  await rec.telemetry({ sessionId: session.sessionId, phase: 'recording' });
+  assert.equal(rec.state.phase, 'cancelled'); assert.equal(rec.state.text, undefined);
+  await assert.rejects(rec.ingest(session.sessionId, audio));
+  assert.equal(commands.at(-1).action, 'cancel');
+});
+test('relay retries are acknowledged, request ids cannot change content, and auth rejects other callers', async t => {
+  let calls=0; const relay = new AstroRelay({ handle: async () => { calls++; return { projects: [] }; } });
+  relay.recording = { state: { phase: 'idle' }, snapshot: () => ({ phase: 'idle' }), close() {} };
+  const request = { id: 'request-123', method: 'projects.list', params: {} };
+  await Promise.all([relay.rpc(request), relay.rpc(request)]); assert.equal(calls,1);
+  await assert.rejects(relay.rpc({ ...request, method: 'threads.list' }));
+  relay.enqueue('control', { action: 'stop', sessionId: 's' });
+  assert.deepEqual(relay.poll(0), relay.poll(0)); assert.equal(relay.poll(1).event, null);
+  relay.enqueue('control', { action: 'cancel', sessionId: 'after-restart' });
+  assert.equal(relay.poll(2, 'previous-server-epoch').event.data.action, 'cancel', 'a previous process cursor cannot acknowledge new commands');
+  const server = createAstroServer(relay, 'test-private-token'); server.listen(0, '127.0.0.1');
+  await new Promise(resolve => server.once('listening',resolve)); t.after(() => { relay.close(); server.closeAllConnections(); server.close(); });
+  const url = `http://127.0.0.1:${server.address().port}/events?cursor=0`;
+  assert.equal((await fetch(url)).status,401);
+  assert.equal((await fetch(url,{headers:{authorization:'Bearer test-private-token',origin:'https://example.invalid'}})).status,403);
+  assert.equal((await fetch(url,{headers:{authorization:'Bearer test-private-token'}})).status,200);
+  const statusUrl = url.replace('/events?cursor=0', '/status');
+  const headers = { authorization: 'Bearer test-private-token' };
+  assert.equal((await (await fetch(statusUrl, { headers })).json()).connected, true);
+  const transfer=relay.fileDeliveries.start(Uint8Array.from([1,2,3]),'test.dat',128);
+  assert.equal((await (await fetch(statusUrl,{headers})).json()).busy,true,'a file transfer blocks service replacement');
+  relay.fileDeliveries.finish({id:transfer.id,error:'test cancelled'});
+  assert.equal((await (await fetch(statusUrl,{headers})).json()).busy,false);
+  relay.fileUpload={id:'expired-upload',phase:'pending',updatedAt:Date.now()-120001};
+  assert.equal((await (await fetch(statusUrl,{headers})).json()).busy,false,'expired uploads cannot block restart forever');
+  assert.equal(relay.fileUpload.phase,'error');
+  relay.lastSeen = Date.now() - 16000;
+  assert.equal((await (await fetch(statusUrl, { headers })).json()).connected, false, 'a crashed phone plugin must not stay connected');
+  const navigate=url.replace('/events?cursor=0','/navigate');
+  assert.equal((await fetch(navigate,{method:'POST',headers,body:JSON.stringify({view:'projects'})})).status,202);
+  assert.equal(relay.events.at(-1).data.bc_command,'probeProjects');assert.equal(calls,1);
+  assert.equal((await fetch(navigate,{method:'POST',headers,body:JSON.stringify({view:'record'})})).status,400);
+});
+
+test('relay restores the protected draft without a send and permits only confirmed pre-start retries', async t => {
+  let calls=0, active=true;
+  const relay=new AstroRelay({handle:async()=>{calls++;if(active){const e=new Error('busy');e.sendNotStarted=true;throw e;}return {turnId:'accepted'};}});
+  relay.recording={state:{id:'session-one',phase:'ready',target,text:'草稿'},snapshot:()=>({sessionId:'session-one',phase:'ready',text:'草稿'}),handle:async()=>{},close(){}};
+  assert.equal(relay.restoreRecording(),true);assert.equal(calls,0);
+  assert.equal(relay.events[0].data.state.text,'草稿');
+  const server=createAstroServer(relay,'local-test-token');
+  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+  t.after(()=>{server.closeAllConnections();server.close();});
+  relay.events=[];
+  const lifecycle=phase=>fetch(`http://127.0.0.1:${server.address().port}/lifecycle`,{method:'POST',headers:{Authorization:'Bearer local-test-token'},body:JSON.stringify({phase,view:'home'})});
+  await lifecycle('hide');assert.equal(relay.events.length,0);
+  await lifecycle('show');await lifecycle('ready');assert.equal(relay.events.length,1);
+  assert.equal(relay.events[0].data.bc_command,'recordingResume');assert.equal(calls,0);
+  const req={id:'recording-send-session-one',method:'prompt.send',params:{threadId:target.threadId,text:'草稿'}};
+  assert.equal((await relay.rpc(req)).retryable,true);
+  active=false;const accepted=await relay.rpc(req);assert.equal(accepted.result.turnId,'accepted');
+  assert.deepEqual(await relay.rpc(req),accepted);assert.equal(calls,2);
+  relay.close();
+});

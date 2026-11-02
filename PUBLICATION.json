@@ -1,0 +1,57 @@
+{
+  "edition": "0.4.3-public.1",
+  "preparedAt": "2026-11-03",
+  "license": "MIT",
+  "repository": "https://github.com/NoobMaster233/wrist-codex",
+  "hardwareBaseline": {
+    "model": "M2551B1",
+    "platform": "p67cn",
+    "firmware": "3.101.043",
+    "appVersion": "0.4.3",
+    "appVersionCode": 37
+  },
+  "offlineChecks": {
+    "nodeTestsPassed": 174,
+    "nativeCTestGroupsPassed": 4,
+    "reconnectPolicyTestsPassed": 3,
+    "recoveryLuaScenariosPassed": 14,
+    "firstInstallLuaScenariosPassed": 9,
+    "displayOnlyWatchfaceModelsPassed": 5,
+    "publicSetupIdentityAndBundleTestPassed": true,
+    "pythonSyntaxPassed": true,
+    "rpkBuildPassed": true,
+    "androidBytePipesBuildPassed": true
+  },
+  "independentChecks": {
+    "gitleaksVersion": "8.30.1",
+    "gitleaksFindings": 0,
+    "knownDeviceSecretsMatched": 0,
+    "nativeCompiler": "GNU Arm Embedded 12.2.1 20221205",
+    "allThreeNativeBinariesReproducedByteForByte": true
+  },
+  "scope": {
+    "newDeviceHardwareDeploymentPerformed": false,
+    "productionDeviceChanged": false,
+    "privateKeysIncluded": false,
+    "recordingsIncluded": false,
+    "firmwareImagesIncluded": false,
+    "oldCompanionIncluded": false
+  },
+  "dependencyAudit": {
+    "runtimeFindings": 0,
+    "rpkToolkitDevFindings": 50,
+    "devSeverity": {
+      "low": 7,
+      "moderate": 22,
+      "high": 9,
+      "critical": 12
+    },
+    "toolkit": "aiot-toolkit 1.1.4"
+  },
+  "limits": [
+    "Public first-install helper has offline coverage but no second factory-reset band acceptance.",
+    "Firmware-bound native code is only for the stated baseline.",
+    "ChatGPT session transcription is experimental.",
+    "Long-term background survival and automatic recovery remain incomplete."
+  ]
+}

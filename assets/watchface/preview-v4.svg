@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="336" height="480" viewBox="0 0 336 480">
+<rect width="336" height="480" rx="32" fill="#000000"/>
+<g font-family="sans-serif" fill="#82908e">
+<text x="28" y="51" font-size="17">CODEX  /  DAILY</text>
+<text x="264" y="53" text-anchor="middle" font-size="21" fill="#9ce8cc">86%</text>
+<rect x="226" y="60" width="76" height="3" rx="1" fill="#1e2926"/>
+<rect x="226" y="60" width="65" height="3" rx="1" fill="#9ce8cc"/>
+<g text-anchor="middle">
+<text x="168" y="113" font-size="25" fill="#f4f6f7">10月27日  周二</text>
+<text x="168" y="222" font-size="96" fill="#f4f6f7">20:36</text>
+<text x="168" y="268" font-size="18">28 SEC</text>
+<rect x="28" y="286" width="280" height="3" rx="1" fill="#1e2926"/>
+<rect x="28" y="286" width="135" height="3" rx="1" fill="#9ce8cc"/>
+<rect x="20" y="316" width="144" height="100" rx="18" fill="#101715"/>
+<rect x="172" y="316" width="144" height="100" rx="18" fill="#101715"/>
+<text x="92" y="352" font-size="19">今日步数</text>
+<text x="244" y="352" font-size="19">最近心率</text>
+<text x="92" y="393" font-size="31" fill="#f4f6f7">6,842</text>
+<text x="244" y="393" font-size="31" fill="#f4f6f7">72</text>
+<text x="168" y="457" font-size="17" fill="#9ce8cc">CODEX  ·  语音就绪</text>
+</g></g></svg>

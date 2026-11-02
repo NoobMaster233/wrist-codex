@@ -1,0 +1,24 @@
+{
+  "name": "wrist-codex",
+  "version": "0.4.3",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "probe:codex": "node scripts/probe-codex.mjs",
+    "bridge": "node bridge/astro-server.mjs",
+    "bridge:legacy": "node bridge/server.mjs",
+    "test": "node --test test/*.test.mjs",
+    "check:public": "python scripts/check-publication.py"
+  },
+  "dependencies": {
+    "ws": "8.22.0"
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">=22"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/NoobMaster233/wrist-codex.git"
+  }
+}
